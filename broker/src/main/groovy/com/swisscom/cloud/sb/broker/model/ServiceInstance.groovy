@@ -2,21 +2,27 @@ package com.swisscom.cloud.sb.broker.model
 
 import org.hibernate.validator.constraints.NotBlank
 
-import javax.persistence.*
+import javax.persistence.Column
+import javax.persistence.Entity
+import javax.persistence.FetchType
+import javax.persistence.JoinColumn
+import javax.persistence.JoinTable
+import javax.persistence.ManyToOne
+import javax.persistence.OneToMany
+import javax.persistence.OneToOne
 
 @Entity
 class ServiceInstance extends BaseModel{
     @NotBlank
     @Column(unique = true)
     String guid
-    String org
-    String space
-
     Date dateCreated = new Date()
     @Column(columnDefinition='tinyint(1) default 1')
     boolean completed
     @Column(columnDefinition='tinyint(1) default 0')
     boolean deleted
+    @Column
+    String parameters
     @OneToMany
     @JoinColumn(name="service_instance_id")
     List<ServiceBinding> bindings = []
@@ -28,17 +34,23 @@ class ServiceInstance extends BaseModel{
     @ManyToOne
     @JoinColumn(name="plan_id")
     Plan plan
+    @ManyToOne
+    @JoinColumn(name = "parent_service_instance_id")
+    ServiceInstance parentServiceInstance
+    @OneToMany(mappedBy = "id", fetch = FetchType.EAGER)
+    Set<ServiceInstance> childs = []
+    @OneToOne
+    ServiceContext serviceContext
 
     @Override
-    public String toString() {
+    String toString() {
         return "ServiceInstance{" +
                 "id=" + id +
                 ", guid='" + guid + '\'' +
-                ", org='" + org + '\'' +
-                ", space='" + space + '\'' +
                 ", dateCreated=" + dateCreated +
                 ", completed=" + completed +
                 ", deleted=" + deleted +
-                '}';
+                ", parameters=" + parameters +
+                "}"
     }
 }

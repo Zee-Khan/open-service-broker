@@ -10,11 +10,16 @@ buildscript {
     }
 }
 
-apply plugin: 'groovy'
-apply plugin: 'idea'
-apply plugin: 'org.springframework.boot'
-apply plugin: 'war'
+plugins { id "com.github.jk1.dependency-license-report" version "0.3.12" }
 
+licenseReport {
+    renderer = new com.github.jk1.license.render.TextReportRenderer("THIRD-PARTY-NOTICES.txt")
+}
+
+ext['tomcat.version'] = '7.0.63'
+ext['flyway.version'] = '4.0.3'
+
+apply plugin: 'org.springframework.boot'
 
 processResources {
     expand(project.properties)
@@ -31,6 +36,7 @@ dependencies {
     compile('org.springframework.boot:spring-boot-starter-jdbc')
     compile('org.springframework.boot:spring-boot-starter-security')
     compile('org.springframework.boot:spring-boot-starter-actuator')
+    compile('org.springframework.cloud:spring-cloud-cloudfoundry-connector')
     compile('org.codehaus.groovy:groovy-all:2.4.7')
     compile('com.google.guava:guava:20.0')
     compile('org.quartz-scheduler:quartz:2.2.2')
@@ -45,9 +51,11 @@ dependencies {
     compile('io.springfox:springfox-swagger-ui:2.6.0')
     compile('org.pacesys:openstack4j-core:2.20')
     compile('org.pacesys.openstack4j.connectors:openstack4j-httpclient:2.20')
-    compile('org.mongodb:mongo-java-driver:2.13.0')
+    compile group: 'org.bouncycastle', name: 'bcprov-jdk16', version: '1.46'
     compile project(':model')
     compile project(':client')
+    // The dependency to tomcat 7.x can be removed as soon as deployment onto Tomcat is not required any more.
+    compile group:'org.apache.tomcat', name:'tomcat-juli', version:property('tomcat.version')
 
     runtime('mysql:mysql-connector-java')
     runtime('javax.el:javax.el-api:2.2.4')
@@ -65,6 +73,7 @@ dependencies {
     testCompile('org.spockframework:spock-core:1.0-groovy-2.4')
     testCompile('cglib:cglib-nodep:3.2.4')
     testCompile('org.spockframework:spock-spring:1.0-groovy-2.4')
+    testCompile('uk.org.lidalia:slf4j-test:1.2.0')
 }
 
 // Add integration/functional test source sets
@@ -109,8 +118,16 @@ task functionalTest(type: Test) {
     classpath = sourceSets.functionalTest.runtimeClasspath
 }
 
+task buildCloudFoundryManifest() {
+    String fileContent = new File("$projectDir/../manifest-template.yml").text
+    fileContent = fileContent.replaceAll("%releasePackage%", "broker-$version")
+    project.file("$projectDir/build/libs").mkdirs()
+    new File("$projectDir/build/libs/manifest.yml").text = fileContent
+}
+
 configurations {
     testArtifacts.extendsFrom testRuntime
+    testCompile.exclude group: "ch.qos.logback"
 }
 
 task testJar(type: Jar) {
@@ -130,11 +147,7 @@ integrationTest.mustRunAfter test
 check.dependsOn functionalTest
 functionalTest.mustRunAfter integrationTest
 
-war {
-    baseName = 'service-broker'
-    doFirst {
-        manifest {
-            attributes("Implementation-Title": project.name, "Implementation-Version": version, "Implementation-Timestamp": new Date())
-        }
-    }
+test {
+    testLogging.showStandardStreams = true
+    testLogging.exceptionFormat = 'full'
 }

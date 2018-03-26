@@ -2,14 +2,17 @@ package com.swisscom.cloud.sb.broker.util.test
 
 import com.google.common.base.Optional
 import com.swisscom.cloud.sb.broker.backup.BackupRestoreProvider
+import com.swisscom.cloud.sb.broker.backup.shield.ShieldTarget
 import com.swisscom.cloud.sb.broker.binding.BindRequest
 import com.swisscom.cloud.sb.broker.binding.BindResponse
 import com.swisscom.cloud.sb.broker.binding.UnbindRequest
 import com.swisscom.cloud.sb.broker.cfextensions.serviceusage.ServiceUsageProvider
+import com.swisscom.cloud.sb.broker.error.ErrorCode
 import com.swisscom.cloud.sb.broker.model.*
 import com.swisscom.cloud.sb.broker.provisioning.DeprovisionResponse
 import com.swisscom.cloud.sb.broker.provisioning.ProvisionResponse
 import com.swisscom.cloud.sb.broker.services.common.ServiceProvider
+import com.swisscom.cloud.sb.broker.updating.UpdateResponse
 import com.swisscom.cloud.sb.broker.util.StringGenerator
 import com.swisscom.cloud.sb.model.usage.ServiceUsage
 import com.swisscom.cloud.sb.model.usage.ServiceUsageType
@@ -78,6 +81,12 @@ class DummySynchronousBackupCapableServiceProvider implements ServiceProvider, B
 
     }
 
+    @Override
+    UpdateResponse update(UpdateRequest request) {
+        ErrorCode.SERVICE_UPDATE_NOT_ALLOWED.throwNew()
+        return null
+    }
+
     private boolean isReady(Date dateCreation) {
         new DateTime(dateCreation).plusSeconds(10).isBeforeNow()
     }
@@ -85,5 +94,16 @@ class DummySynchronousBackupCapableServiceProvider implements ServiceProvider, B
     @Override
     ServiceUsage findUsage(ServiceInstance serviceInstance, Optional<Date> enddate) {
         return new ServiceUsage(value: "0", type: ServiceUsageType.TRANSACTIONS)
+    }
+
+    @Override
+    ShieldTarget buildShieldTarget(ServiceInstance serviceInstance) {
+        throw new NotImplementedException()
+    }
+
+    @Override
+    String shieldAgentUrl(ServiceInstance serviceInstance) {
+        log.info("shieldAgentUrl for ${serviceInstance.guid}")
+        return StringGenerator.randomUuid()
     }
 }

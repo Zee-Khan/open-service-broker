@@ -12,6 +12,7 @@ import com.swisscom.cloud.sb.broker.services.common.ServiceProviderLookup
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -45,7 +46,7 @@ abstract class BaseController {
     @ExceptionHandler
     ResponseEntity<ErrorDto> serviceBrokerException(ServiceBrokerException exception) {
         log.error("Service Broker exception", exception)
-        return new ResponseEntity<ErrorDto>(errorDtoConverter.convert(exception), exception.httpStatus);
+        return new ResponseEntity<ErrorDto>(errorDtoConverter.convert(exception), exception.httpStatus ?: HttpStatus.INTERNAL_SERVER_ERROR)
     }
 
     protected ServiceProvider findServiceProvider(Plan plan) {
@@ -55,13 +56,17 @@ abstract class BaseController {
     protected ServiceInstance getAndCheckServiceInstance(String serviceInstanceId) {
         ServiceInstance serviceInstance = serviceInstanceRepository.findByGuid(serviceInstanceId)
         if (!serviceInstance) {
-            ErrorCode.SERVICE_INSTANCE_NOT_FOUND.throwNew()
+            ErrorCode.SERVICE_INSTANCE_NOT_FOUND.throwNew("ID = ${serviceInstanceId}")
         }
         if (serviceInstance.deleted) {
-            ErrorCode.SERVICE_INSTANCE_DELETED.throwNew()
+            ErrorCode.SERVICE_INSTANCE_DELETED.throwNew("ID = ${serviceInstanceId}")
         }
+        return serviceInstance
+    }
+
+    protected ServiceInstance verifyServiceInstanceIsReady(ServiceInstance serviceInstance) {
         if (!serviceInstance.completed) {
-            ErrorCode.SERVICE_INSTANCE_PROVISIONING_NOT_COMPLETED.throwNew()
+            ErrorCode.SERVICE_INSTANCE_PROVISIONING_NOT_COMPLETED.throwNew("ID = ${serviceInstance.guid}")
         }
         return serviceInstance
     }

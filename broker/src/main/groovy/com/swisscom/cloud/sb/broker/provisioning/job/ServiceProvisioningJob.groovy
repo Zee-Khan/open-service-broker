@@ -27,22 +27,23 @@ class ServiceProvisioningJob extends AbstractLastOperationJob {
     @Autowired
     private ProvisionRequestRepository provisionRequestRepository
 
-    protected LastOperationJobContext enrichContext(LastOperationJobContext context) {
-        String serviceInstanceGuid = context.lastOperation.guid
+    protected LastOperationJobContext enrichContext(LastOperationJobContext jobContext) {
+        String serviceInstanceGuid = jobContext.lastOperation.guid
         ProvisionRequest provisionRequest = provisionRequestRepository.findByServiceInstanceGuid(serviceInstanceGuid)
-        context.provisionRequest = provisionRequest
-        context.plan = provisionRequest.plan
-        context.serviceInstance = serviceInstanceRepository.findByGuid(serviceInstanceGuid)
-        return context
+        jobContext.provisionRequest = provisionRequest
+        jobContext.plan = provisionRequest.plan
+        jobContext.serviceInstance = serviceInstanceRepository.findByGuid(serviceInstanceGuid)
+        return jobContext
     }
 
     @Override
-    protected AsyncOperationResult handleJob(LastOperationJobContext context) {
-        log.info("About to request service provision, ${context.lastOperation.toString()}")
-        AsyncOperationResult provisionResult = findServiceProvisioner(context).requestProvision(context)
-        provisioningPersistenceService.createServiceInstanceOrUpdateDetails(context.provisionRequest, new ProvisionResponse(details: provisionResult.details, isAsync: true))
+    protected AsyncOperationResult handleJob(LastOperationJobContext jobContext) {
+        log.info("About to request service provision, ${jobContext.lastOperation.toString()}")
+        AsyncOperationResult provisionResult = findServiceProvisioner(jobContext).requestProvision(jobContext)
+        jobContext.serviceInstance = provisioningPersistenceService.createServiceInstanceOrUpdateDetails(jobContext.provisionRequest, new ProvisionResponse(details: provisionResult.details, isAsync: true))
+
         if (provisionResult.status == LastOperation.Status.SUCCESS) {
-            provisioningPersistenceService.updateServiceInstanceCompletion(context.serviceInstance, true)
+            provisioningPersistenceService.updateServiceInstanceCompletion(jobContext.serviceInstance, true)
         }
         return provisionResult
     }

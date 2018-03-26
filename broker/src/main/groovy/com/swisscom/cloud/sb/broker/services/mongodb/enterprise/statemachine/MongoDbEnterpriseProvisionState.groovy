@@ -10,16 +10,18 @@ import com.swisscom.cloud.sb.broker.services.bosh.statemachine.BoshProvisionStat
 import com.swisscom.cloud.sb.broker.services.mongodb.enterprise.MongoDbEnterpriseDeployment
 import com.swisscom.cloud.sb.broker.services.mongodb.enterprise.MongoDbEnterpriseServiceProvider
 import com.swisscom.cloud.sb.broker.services.mongodb.enterprise.opsmanager.OpsManagerGroup
-import com.swisscom.cloud.sb.broker.util.ServiceDetailKey
-import com.swisscom.cloud.sb.broker.util.ServiceDetailsHelper
+import com.swisscom.cloud.sb.broker.util.servicedetail.ServiceDetailKey
+import com.swisscom.cloud.sb.broker.util.servicedetail.ServiceDetailsHelper
 import groovy.util.logging.Slf4j
 
 import static com.swisscom.cloud.sb.broker.model.ServiceDetail.from
-import static com.swisscom.cloud.sb.broker.util.ServiceDetailKey.*
+import static com.swisscom.cloud.sb.broker.services.mongodb.enterprise.MongoDbEnterpriseServiceDetailKey.*
 import static com.swisscom.cloud.sb.broker.util.StringGenerator.randomAlphaNumeric
 
 @Slf4j
 enum MongoDbEnterpriseProvisionState implements ServiceStateWithAction<MongoDbEnterperiseStateMachineContext> {
+
+
     CREATE_OPS_MANAGER_GROUP(LastOperation.Status.IN_PROGRESS, new OnStateChange<MongoDbEnterperiseStateMachineContext>()  {
         @Override
         StateChangeActionResult triggerAction(MongoDbEnterperiseStateMachineContext stateContext) {
@@ -42,16 +44,18 @@ enum MongoDbEnterpriseProvisionState implements ServiceStateWithAction<MongoDbEn
         }
     }),
     REQUEST_AUTOMATION_UPDATE(LastOperation.Status.IN_PROGRESS,new OnStateChange<MongoDbEnterperiseStateMachineContext>()  {
+
         @Override
         StateChangeActionResult triggerAction(MongoDbEnterperiseStateMachineContext stateContext) {
             String groupId = MongoDbEnterpriseServiceProvider.getMongoDbGroupId(stateContext.lastOperationJobContext)
             int initialAutomationVersion = stateContext.opsManagerFacade.getAndCheckInitialAutomationGoalVersion(groupId)
             MongoDbEnterpriseDeployment deployment = stateContext.opsManagerFacade.deployReplicaSet(groupId, stateContext.lastOperationJobContext.provisionRequest.serviceInstanceGuid,
-                                                                                                    ServiceDetailsHelper.from(stateContext.lastOperationJobContext.serviceInstance.details).getValue(PORT) as int,
+                                                                                                    ServiceDetailsHelper.from(stateContext.lastOperationJobContext.serviceInstance.details).getValue(ServiceDetailKey.PORT) as int,
                                                                                                     ServiceDetailsHelper.from(stateContext.lastOperationJobContext.serviceInstance.details).getValue(MONGODB_ENTERPRISE_HEALTH_CHECK_USER),
-                                                                                                    ServiceDetailsHelper.from(stateContext.lastOperationJobContext.serviceInstance.details).getValue(MONGODB_ENTERPRISE_HEALTH_CHECK_PASSWORD))
+                    ServiceDetailsHelper.from(stateContext.lastOperationJobContext.serviceInstance.details).getValue(MONGODB_ENTERPRISE_HEALTH_CHECK_PASSWORD),
+                    findTargetMongoDBVersion(stateContext))
 
-            return new StateChangeActionResult(go2NextState: true,details: [from(DATABASE, deployment.database),
+            return new StateChangeActionResult(go2NextState: true,details: [from(ServiceDetailKey.DATABASE, deployment.database),
                                                                             from(MONGODB_ENTERPRISE_TARGET_AUTOMATION_GOAL_VERSION, String.valueOf(initialAutomationVersion + 1)),
                                                                             from(MONGODB_ENTERPRISE_REPLICA_SET, deployment.replicaSet),
                                                                             from(MONGODB_ENTERPRISE_MONITORING_AGENT_USER, deployment.monitoringAgentUser),
@@ -59,6 +63,15 @@ enum MongoDbEnterpriseProvisionState implements ServiceStateWithAction<MongoDbEn
                                                                             from(MONGODB_ENTERPRISE_BACKUP_AGENT_USER, deployment.backupAgentUser),
                                                                             from(MONGODB_ENTERPRISE_BACKUP_AGENT_PASSWORD, deployment.backupAgentPassword)])
         }
+
+        static String findTargetMongoDBVersion(MongoDbEnterperiseStateMachineContext context) {
+            def mongoDbVersion = context.lastOperationJobContext.plan.parameters?.find({
+                it.name == MongoDbEnterpriseProvisionState.PLAN_PARAMETER_MONGODB_VERSION
+            })?.value
+            log.info("Could not find a '${PLAN_PARAMETER_MONGODB_VERSION}' parameter in plan. Falling back to SB wide configuration.")
+            return mongoDbVersion ?: context.mongoDbEnterpriseConfig.mongoDbVersion
+        }
+
     }),
     CHECK_AUTOMATION_UPDATE_STATUS(LastOperation.Status.IN_PROGRESS, new OnStateChange<MongoDbEnterperiseStateMachineContext>()  {
         @Override
@@ -117,6 +130,8 @@ enum MongoDbEnterpriseProvisionState implements ServiceStateWithAction<MongoDbEn
     }),
     PROVISION_SUCCESS(LastOperation.Status.SUCCESS,new NoOp())
 
+
+    public static final String PLAN_PARAMETER_MONGODB_VERSION = "MONGODB_VERSION"
     public static final Map<String, ServiceState> map = new TreeMap<String, ServiceState>()
 
     static {

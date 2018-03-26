@@ -54,6 +54,14 @@ class ServiceDefinitionProcessor {
         processPlans(service, serviceJson)
     }
 
+    def createOrUpdateServiceDefinitionFromYaml(ServiceDto serviceDto) {
+        CFService service = processServiceBasicDefiniton(serviceDto)
+        processServiceTags(service, serviceDto)
+        processServiceMetadata(service, serviceDto)
+        processServicePermissions(service, serviceDto)
+        processPlans(service, serviceDto)
+    }
+  
     def deleteServiceDefinition(String id) {
         CFService service = cfServiceRepository.findByGuid(id)
         if (!service) {
@@ -80,8 +88,12 @@ class ServiceDefinitionProcessor {
         service.description = serviceJson.description
         service.bindable = serviceJson.bindable
         service.internalName = serviceJson.internalName
+        service.serviceProviderClass = serviceJson.serviceProviderClass
         service.displayIndex = serviceJson.displayIndex
         service.asyncRequired = serviceJson.asyncRequired
+        service.plan_updateable = serviceJson.plan_updateable
+        service.instancesRetrievable = serviceJson.instancesRetrievable
+        service.bindingsRetrievable = serviceJson.bindingsRetrievable
         // dashboard items
         if (serviceJson.dashboard_client) {
             service.dashboardClientId = serviceJson.dashboard_client.id
@@ -228,9 +240,11 @@ class ServiceDefinitionProcessor {
         plan.name = planJson.name
         plan.description = planJson.description
         plan.templateUniqueIdentifier = planJson.templateId
+        plan.templateVersion = planJson.templateVersion
         plan.free = planJson.free
         plan.displayIndex = planJson.displayIndex
         plan.internalName = planJson.internalName
+        plan.serviceProviderClass = planJson.serviceProviderClass
         plan.asyncRequired = planJson.asyncRequired
         plan.maxBackups = planJson.maxBackups
         checkBackupSanity(service, plan)
@@ -241,7 +255,7 @@ class ServiceDefinitionProcessor {
         if (plan.maxBackups <= 0) {
             return
         }
-        def provider = serviceProviderLookup.findServiceProvider(plan)
+        def provider = serviceProviderLookup.findServiceProvider(cfService, plan)
         if (!(provider instanceof BackupRestoreProvider)) {
             throw new RuntimeException("Not allowed to set up maxBackups:${plan.maxBackups} for a service provider that does not support backup/restore")
         }

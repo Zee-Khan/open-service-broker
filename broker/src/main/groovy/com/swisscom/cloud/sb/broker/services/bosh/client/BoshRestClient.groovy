@@ -2,7 +2,7 @@ package com.swisscom.cloud.sb.broker.services.bosh.client
 
 import com.google.common.annotations.VisibleForTesting
 import com.swisscom.cloud.sb.broker.services.bosh.BoshConfig
-import com.swisscom.cloud.sb.broker.util.RestTemplateFactory
+import com.swisscom.cloud.sb.broker.util.RestTemplateBuilder
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.springframework.http.*
@@ -26,11 +26,11 @@ class BoshRestClient {
     public static final String CLOUD_CONFIG_QUERY = "?limit=1"
 
     private final BoshConfig boshConfig
-    private final RestTemplateFactory restTemplateFactory
+    private final RestTemplateBuilder restTemplateBuilder
 
-    BoshRestClient(BoshConfig boshConfig, RestTemplateFactory restTemplateFactory) {
+    BoshRestClient(BoshConfig boshConfig, RestTemplateBuilder restTemplateBuilder) {
         this.boshConfig = boshConfig
-        this.restTemplateFactory = restTemplateFactory
+        this.restTemplateBuilder = restTemplateBuilder
     }
 
     String fetchBoshInfo() {
@@ -70,7 +70,7 @@ class BoshRestClient {
     }
 
     String deleteDeployment(String id) {
-        def response = createRestTemplate().exchange(prependBaseUrl(DEPLOYMENTS + '/' + id),HttpMethod.DELETE,new HttpEntity<Object>(createAuthHeaders()),String.class)
+        def response = createRestTemplate().exchange(prependBaseUrl(DEPLOYMENTS + '/' + id)+'?force=true',HttpMethod.DELETE,new HttpEntity<Object>(createAuthHeaders()),String.class)
         return handleRedirectonAndExtractTaskId(response)
     }
 
@@ -99,14 +99,10 @@ class BoshRestClient {
         return boshConfig
     }
 
-    RestTemplateFactory getRestTemplateFactory() {
-        return restTemplateFactory
-    }
-
     private RestTemplate createRestTemplate() {
-        def result = restTemplateFactory.buildWithSSLValidationDisabled()
-        result.setErrorHandler(new CustomErrorHandler())
-        return result
+        def restTemplate = restTemplateBuilder.withSSLValidationDisabled().build()
+        restTemplate.setErrorHandler(new CustomErrorHandler())
+        return restTemplate
     }
 
     private class CustomErrorHandler extends DefaultResponseErrorHandler {
