@@ -30,6 +30,7 @@ set -x
 git checkout $branch_to_release_from
 git checkout -b releases/$1
 ./scripts/set-version.sh $1
+./scripts/update-changelog.sh $1
 git commit --no-verify -am "Bump release version to $1"
 git push --set-upstream origin releases/$1
 
