@@ -18,7 +18,7 @@ if [ "$#" -ge 4 ]; then
     branch_to_push_to=$4
 fi
 
-if [[ -n $(git status -s --ignored) ]]; then
+if [[ -n $(git status -s) ]]; then
     echo "ERROR: Release must be performed from a fresh clone of the repository."
     exit 1
 fi
