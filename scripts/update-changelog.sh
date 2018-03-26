@@ -14,4 +14,4 @@ cd `dirname $0`/..
 newline="\[Unreleased\]§§## \[$1\] - `date +%Y-%m-%d`"
 
 sed "s/\[Unreleased\]/${newline}/" CHANGELOG.md | tr '§' '\n\n' > CHANGELOG.md.new
-#mv gradle.properties.new gradle.properties
+mv CHANGELOG.md.new CHANGELOG.md
