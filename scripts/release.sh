@@ -51,7 +51,7 @@ git merge releases/$1 --no-ff -m "Merge branch 'releases/$1'"
 git tag -a v$1 -m "v$1 release of the OSB"
 git push origin $branch_to_push_to --tags
 
-git co $branch_to_release_from
+git checkout $branch_to_release_from
 git merge releases/$1 --no-ff -m "Merge branch 'releases/$1' into $branch_to_release_from"
 git branch -d releases/$1
 ./scripts/set-version.sh $2
