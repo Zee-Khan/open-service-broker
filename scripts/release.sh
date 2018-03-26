@@ -48,7 +48,7 @@ else
 fi
 
 git merge releases/$1 --no-ff -m "Merge branch 'releases/$1'"
-git tag -a v$1 -m "v$1 release of the OSB"
+git tag -a v$1 m
 git push origin $branch_to_push_to --tags
 
 git checkout $branch_to_release_from
