@@ -36,3 +36,5 @@ nbdist/
 ### GPG rings ###
 local.*
 
+### Scripts ###
+scripts/release.sh

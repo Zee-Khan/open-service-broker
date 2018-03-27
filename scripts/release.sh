@@ -30,7 +30,7 @@ set -x
 git checkout $branch_to_release_from
 RES=$(git pull origin "$branch_to_release_from")
 echo "RES = $RES"
-if [ $RES != *"Already up-to-date"* ]; then
+if [[ $RES != *"Already up-to-date"* ]]; then
     echo $RES
     echo "$branch_to_release_from wasn't up-to-date prior to execution. Please pull and ensure state of $branch_to_release_from is good before release."
     exit 1
@@ -57,7 +57,7 @@ else
 fi
 RES2=$(git pull origin "$branch_to_push_to")
 echo "RES2= $RES2"
-if [ $RES == *"fail"* ]; then
+if [[ $RES == *"fail"* ]]; then
     echo $RES2
     echo "$branch_to_push_to failed to pull. Please pull and ensure state of $branch_to_push_to is good before release."
     exit 1
